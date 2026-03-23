@@ -279,6 +279,12 @@ def _detect_node(root: Path, info: ProjectInfo) -> None:
         if "TypeScript" not in info.languages:
             info.languages.insert(0, "TypeScript")
 
+    # Hardhat / Web3
+    if _exists(root, "hardhat.config.js") or _exists(root, "hardhat.config.ts") or "hardhat" in all_deps:
+        info.frameworks.append("Hardhat")
+        if not info.commands.test:
+            info.commands.test = "npx hardhat test"
+
     # test runner
     if "vitest" in all_deps:
         info.test_runner = "vitest"
@@ -431,11 +437,20 @@ def _extract_readme(root: Path, info: ProjectInfo) -> None:
                 if m:
                     info.name = m.group(1).strip()
             if not info.description:
-                # grab first non-heading, non-empty paragraph
+                in_code_block = False
                 for line in text.splitlines():
-                    line = line.strip()
-                    if line and not line.startswith("#") and not line.startswith("!"):
-                        info.description = line[:200]
+                    stripped = line.strip()
+                    if stripped.startswith("```"):
+                        in_code_block = not in_code_block
+                        continue
+                    if in_code_block:
+                        continue
+                    if stripped and not stripped.startswith("#") \
+                            and not stripped.startswith("!") \
+                            and not stripped.startswith("`") \
+                            and not stripped.startswith("$") \
+                            and not stripped.startswith("<"):
+                        info.description = stripped[:200]
                         break
             break
 
